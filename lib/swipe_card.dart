@@ -42,8 +42,8 @@ class SwipeCard extends StatelessWidget {
     required this.onSwipeUpdate,
     required this.cardWidth,
     this.cardSpacing = 16,
-    this.animationDuration = const Duration(milliseconds: 300),
-    this.animationCurve = Curves.easeOutCubic,
+    this.animationDuration = const Duration(milliseconds: 180),
+    this.animationCurve = Curves.fastOutSlowIn,
   });
 
   @override
@@ -62,7 +62,7 @@ class SwipeCard extends StatelessWidget {
             child: Dismissible(
               key: Key('swipe_card_$index'),
               direction: DismissDirection.up,
-              dismissThresholds: const {DismissDirection.up: 0.3},
+              dismissThresholds: const {DismissDirection.up: 0.25},
               onDismissed: (_) => onDismissed(),
               onUpdate: (details) => onSwipeUpdate(details.progress),
               child: SizedBox(width: cardWidth, child: customWidget),

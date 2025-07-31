@@ -30,8 +30,8 @@ class CardSwipeStack extends StatefulWidget {
     this.onCardUpdate,
     required this.cardWidth,
     this.cardSpacing = 16,
-    this.cardAnimationDuration = const Duration(milliseconds: 300),
-    this.cardAnimationCurve = Curves.easeOutCubic,
+    this.cardAnimationDuration = const Duration(milliseconds: 180),
+    this.cardAnimationCurve = Curves.fastOutSlowIn,
     this.customTransformCallback,
   });
 
@@ -257,7 +257,9 @@ class _CardSwipeStackState extends State<CardSwipeStack> {
       // Default effects when no custom callback (will be overridden if custom callback is provided)
       if (widget.customTransformCallback == null) {
         scale =
-            1.0 - (currentProgress * 0.1); // Scale down slightly while swiping
+            1.0 -
+            (currentProgress *
+                0.15); // More pronounced scale feedback while swiping
       }
     }
 

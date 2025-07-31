@@ -168,14 +168,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             padding: EdgeInsets.symmetric(horizontal: 16),
             cardAnimationDuration: const Duration(milliseconds: 200),
             cardAnimationCurve: Curves.fastEaseInToSlowEaseOut,
-            // springPhysics: const SpringDescription(
-            //   mass: 0.01,
-            //   stiffness: 1000.0,
-            //   damping: 300.0,
-            // ),
-            // enableSnapping: true,
-            // Optional: Use custom scroll physics
-            // scrollPhysics: const ClampingScrollPhysics(),
           ),
 
           // Animated overlay that shows/hides based on swipe progress

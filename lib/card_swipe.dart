@@ -75,12 +75,12 @@ class CardSwipe extends StatefulWidget {
     required this.cardWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
     this.cardSpacing = 16,
-    this.cardAnimationDuration = const Duration(milliseconds: 300),
-    this.cardAnimationCurve = Curves.easeOutCubic,
+    this.cardAnimationDuration = const Duration(milliseconds: 180),
+    this.cardAnimationCurve = Curves.fastOutSlowIn,
     this.springPhysics = const SpringDescription(
-      mass: 0.1, // Lighter mass for more responsive feel
-      stiffness: 150.0, // Balanced stiffness for smooth movement
-      damping: 15.0, // Lower damping for smoother motion
+      mass: 0.05, // Lighter mass for snappier response
+      stiffness: 250.0, // Higher stiffness for more decisive animations
+      damping: 12.0, // Lower damping for snappier motion
     ),
     this.scrollPhysics,
     this.enableSnapping = false,
