@@ -247,16 +247,12 @@ class CustomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.25),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color, color],
+      decoration: ShapeDecoration(
+        color: Colors.white60,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.black, width: 1),
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: color, blurRadius: 10, offset: const Offset(0, 5)),
-        ],
       ),
       child: Container(
         height: 386,
@@ -264,12 +260,12 @@ class CustomCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 60, color: Colors.white),
+            Icon(icon, size: 60, color: Colors.black),
             const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
@@ -278,14 +274,14 @@ class CustomCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Card ${index + 1}',
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              style: const TextStyle(color: Colors.black38, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(40),
+                color: Colors.black.withAlpha(40),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(

@@ -51,7 +51,7 @@ class SwipeCard extends StatelessWidget {
     return AnimatedPositioned(
       duration: animationDuration,
       curve: animationCurve,
-      left: index * (cardWidth + cardSpacing) + transforms.offsetX,
+      left: transforms.offsetX,
       top: transforms.offsetY,
       child: Transform.rotate(
         angle: transforms.rotation,

@@ -39,183 +39,194 @@ class CardSwipeStack extends StatefulWidget {
   State<CardSwipeStack> createState() => _CardSwipeStackState();
 }
 
-class _CardSwipeStackState extends State<CardSwipeStack> {
-  final ValueNotifier<List<int>> _removedItems = ValueNotifier<List<int>>([]);
-  final Map<int, ValueNotifier<double>> _swipeProgress = {};
+/// Consolidated state for tracking card information
+class _CardState {
+  final Set<int> removedCards;
+  final Map<int, double> swipeProgress;
 
-  // Cache for expensive calculations
-  final Map<int, int> _removedBeforeCache = {};
+  const _CardState({required this.removedCards, required this.swipeProgress});
 
-  /// Calculates how many cards before the given index have been removed
-  int _getRemovedBeforeCount(int index) {
-    // Use cache if available
-    if (_removedBeforeCache.containsKey(index)) {
-      return _removedBeforeCache[index]!;
-    }
-
-    // Calculate and cache the result
-    final removedItems = _removedItems.value;
-    final count = removedItems.where((i) => i < index).length;
-    _removedBeforeCache[index] = count;
-
-    return count;
+  _CardState copyWith({
+    Set<int>? removedCards,
+    Map<int, double>? swipeProgress,
+  }) {
+    return _CardState(
+      removedCards: removedCards ?? this.removedCards,
+      swipeProgress: swipeProgress ?? this.swipeProgress,
+    );
   }
 
-  /// Clears the cache when items are removed
-  void _clearCache() {
-    _removedBeforeCache.clear();
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _CardState &&
+        removedCards.length == other.removedCards.length &&
+        removedCards.every((card) => other.removedCards.contains(card)) &&
+        swipeProgress.length == other.swipeProgress.length &&
+        swipeProgress.entries.every(
+          (entry) => other.swipeProgress[entry.key] == entry.value,
+        );
+  }
+
+  @override
+  int get hashCode => Object.hash(removedCards, swipeProgress);
+}
+
+class _CardSwipeStackState extends State<CardSwipeStack> {
+  late ValueNotifier<_CardState> _cardState;
+
+  @override
+  void initState() {
+    super.initState();
+    _cardState = ValueNotifier(
+      _CardState(removedCards: <int>{}, swipeProgress: <int, double>{}),
+    );
   }
 
   void _handleCardDismiss(int index) {
-    _removedItems.value = [..._removedItems.value, index];
-    _clearCache(); // Clear cache when items are removed
-    if (mounted) {
-      // Dispose and remove the ValueNotifier
-      _swipeProgress[index]?.dispose();
-      _swipeProgress.remove(index);
+    if (!mounted) return;
 
-      widget.onCardSwipe?.call(index);
-    }
+    final currentState = _cardState.value;
+    final newRemovedCards = Set<int>.from(currentState.removedCards)
+      ..add(index);
+    final newSwipeProgress = Map<int, double>.from(currentState.swipeProgress)
+      ..remove(index);
+
+    _cardState.value = currentState.copyWith(
+      removedCards: newRemovedCards,
+      swipeProgress: newSwipeProgress,
+    );
+
+    widget.onCardSwipe?.call(index);
   }
 
   void _handleSwipeUpdate(int index, double progress) {
-    // Create ValueNotifier if it doesn't exist
-    _swipeProgress[index] ??= ValueNotifier<double>(0.0);
+    if (!mounted) return;
 
-    // Update the ValueNotifier (this will trigger rebuilds only for listening widgets)
-    _swipeProgress[index]!.value = progress;
+    final currentState = _cardState.value;
+    final newSwipeProgress = Map<int, double>.from(currentState.swipeProgress)
+      ..[index] = progress;
+
+    _cardState.value = currentState.copyWith(swipeProgress: newSwipeProgress);
 
     widget.onCardUpdate?.call(index, progress);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<List<int>>(
-      valueListenable: _removedItems,
-      builder: (context, removedItems, child) {
+    return ValueListenableBuilder<_CardState>(
+      valueListenable: _cardState,
+      builder: (context, cardState, child) {
         final List<Widget> cards = [];
-        for (int index = widget.itemCount - 1; index >= 0; index--) {
-          if (removedItems.contains(index)) {
-            continue;
-          }
+        final List<int> remainingCards = [];
 
-          cards.add(_buildCard(index));
+        // Collect remaining cards in ascending order
+        for (int index = 0; index < widget.itemCount; index++) {
+          if (!cardState.removedCards.contains(index)) {
+            remainingCards.add(index);
+          }
         }
 
+        // Calculate layout parameters
+        final remainingCardCount = remainingCards.length;
+
+        // Create mapping from card index to visual position (0, 1, 2, 3...)
+        final Map<int, int> cardToVisualPosition = {};
+        for (int i = 0; i < remainingCards.length; i++) {
+          cardToVisualPosition[remainingCards[i]] = i;
+        }
+
+        // Build cards from back to front for proper z-ordering
+        for (int i = remainingCards.length - 1; i >= 0; i--) {
+          final cardIndex = remainingCards[i];
+          cards.add(_buildCard(cardIndex, cardState, cardToVisualPosition));
+        }
+
+        // Calculate width based on remaining cards, minimum of 1 card width
+        final effectiveWidth = remainingCardCount > 0
+            ? remainingCardCount * (widget.cardWidth + widget.cardSpacing)
+            : widget.cardWidth;
+
         return SizedBox(
-          width: widget.itemCount * (widget.cardWidth + widget.cardSpacing),
+          width: effectiveWidth,
           child: Stack(children: cards),
         );
       },
     );
   }
 
-  Widget _buildCard(int index) {
-    // Create the ValueNotifier if it doesn't exist
-    _swipeProgress[index] ??= ValueNotifier<double>(0.0);
-
-    return ValueListenableBuilder<double>(
-      valueListenable: _swipeProgress[index]!,
-      builder: (context, currentProgress, child) {
-        // Check if we need to listen to previous card for cascade effects
-        if (index > 0 && !_removedItems.value.contains(index - 1)) {
-          _swipeProgress[index - 1] ??= ValueNotifier<double>(0.0);
-
-          return ValueListenableBuilder<double>(
-            valueListenable: _swipeProgress[index - 1]!,
-            builder: (context, previousProgress, child) {
-              return SwipeCard(
-                index: index,
-                transforms: _calculateCardTransforms(index),
-                customWidget: widget.itemBuilder(context, index),
-                onDismissed: () => _handleCardDismiss(index),
-                onSwipeUpdate: (progress) =>
-                    _handleSwipeUpdate(index, progress),
-                cardWidth: widget.cardWidth,
-                cardSpacing: widget.cardSpacing,
-                animationDuration: widget.cardAnimationDuration,
-                animationCurve: widget.cardAnimationCurve,
-              );
-            },
-          );
-        } else {
-          return SwipeCard(
-            index: index,
-            transforms: _calculateCardTransforms(index),
-            customWidget: widget.itemBuilder(context, index),
-            onDismissed: () => _handleCardDismiss(index),
-            onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
-            cardWidth: widget.cardWidth,
-            cardSpacing: widget.cardSpacing,
-            animationDuration: widget.cardAnimationDuration,
-            animationCurve: widget.cardAnimationCurve,
-          );
-        }
-      },
+  /// Builds a single card with all necessary transforms applied
+  Widget _buildCard(
+    int index,
+    _CardState cardState,
+    Map<int, int> cardToVisualPosition,
+  ) {
+    return SwipeCard(
+      index: index,
+      transforms: _calculateCardTransforms(
+        index,
+        cardState,
+        cardToVisualPosition,
+      ),
+      customWidget: widget.itemBuilder(context, index),
+      onDismissed: () => _handleCardDismiss(index),
+      onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
+      cardWidth: widget.cardWidth,
+      cardSpacing: widget.cardSpacing,
+      animationDuration: widget.cardAnimationDuration,
+      animationCurve: widget.cardAnimationCurve,
     );
   }
 
   @override
   void dispose() {
-    // Dispose all ValueNotifiers
-    for (final notifier in _swipeProgress.values) {
-      notifier.dispose();
-    }
-    _removedItems.dispose();
+    _cardState.dispose();
     super.dispose();
   }
 
-  CardSwipeTransforms _calculateCardTransforms(int index) {
-    // Cache removed items for performance
-    final removedItems = _removedItems.value;
+  /// Calculates all transforms for a card including position, scale, and cascade effects
+  CardSwipeTransforms _calculateCardTransforms(
+    int index,
+    _CardState cardState,
+    Map<int, int> cardToVisualPosition,
+  ) {
+    // Get the visual position (0, 1, 2, 3...) for this card
+    final visualPosition = cardToVisualPosition[index] ?? 0;
 
-    // Calculate base offset from removed cards before this one
-    final removedBeforeThisCard = _getRemovedBeforeCount(index);
+    // Calculate base position - each card gets consecutive visual position
+    final baseOffsetX =
+        visualPosition * (widget.cardWidth + widget.cardSpacing);
 
-    // Calculate the target position after all removals
-    final targetOffsetX =
-        -removedBeforeThisCard * (widget.cardWidth + widget.cardSpacing);
+    // Get current card's swipe progress
+    final currentProgress = cardState.swipeProgress[index] ?? 0.0;
 
-    // Start with the target position
-    double offsetX = targetOffsetX;
-    double offsetY = 0.0;
-    double scale = 1.0;
-    double opacity = 1.0;
-
-    // Apply current card's swipe progress
-    final currentProgress = _swipeProgress[index]?.value ?? 0.0;
-    if (currentProgress > 0.0) {
-      final currentEffects = _calculateCurrentCardEffects(currentProgress);
-      offsetX += currentEffects.offsetX;
-      offsetY += currentEffects.offsetY;
-      scale *= currentEffects.scale;
-      opacity *= currentEffects.opacity;
+    // Get previous card's swipe progress for cascade effect
+    // Find the previous card in the visual order, not the original index order
+    double previousProgress = 0.0;
+    if (visualPosition > 0) {
+      // Find the card that has visualPosition - 1
+      for (final entry in cardToVisualPosition.entries) {
+        if (entry.value == visualPosition - 1) {
+          previousProgress = cardState.swipeProgress[entry.key] ?? 0.0;
+          break;
+        }
+      }
     }
 
-    // Apply cascade effects from previous cards
-    if (index > 0) {
-      final cascadeEffects = _calculateCascadeEffects(index);
-      offsetX += cascadeEffects.offsetX;
-      offsetY += cascadeEffects.offsetY;
-      scale *= cascadeEffects.scale;
-      opacity *= cascadeEffects.opacity;
-    }
-
-    // Create base transforms
-    final baseTransforms = CardSwipeTransforms(
-      offsetX: offsetX,
-      offsetY: offsetY,
-      scale: scale,
-      opacity: opacity,
+    // Calculate combined transforms
+    final transforms = _calculateCombinedTransforms(
+      targetOffsetX: baseOffsetX,
+      currentProgress: currentProgress,
+      previousProgress: previousProgress,
     );
 
     // Apply custom transform callback if provided
     if (widget.customTransformCallback != null) {
       final customTransforms = widget.customTransformCallback!(
         index,
-        baseTransforms,
+        transforms,
         currentProgress,
-        removedItems,
+        cardState.removedCards.toList(),
         widget.cardWidth,
         widget.cardSpacing,
       );
@@ -225,62 +236,42 @@ class _CardSwipeStackState extends State<CardSwipeStack> {
       }
     }
 
-    return baseTransforms;
+    return transforms;
   }
 
-  /// Calculates transform effects for the current card being swiped
-  CardSwipeTransforms _calculateCurrentCardEffects(double progress) {
-    // No horizontal transformation for the card being swiped
-    final offsetX = 0.0;
+  /// Calculates combined transforms including base position, current card effects, and cascade effects
+  CardSwipeTransforms _calculateCombinedTransforms({
+    required double targetOffsetX,
+    required double currentProgress,
+    required double previousProgress,
+  }) {
+    // Start with the target position from removed cards
+    double offsetX = targetOffsetX;
+    double offsetY = 0.0;
+    double scale = 1.0;
+    double opacity = 1.0;
+    double rotation = 0.0;
 
-    // Apply additional effects based on progress
-    if (widget.customTransformCallback == null) {
-      // Default combined effects when no custom callback
-      final opacity = 1.0; // No opacity change
-      final scale = 1.0 - (progress * 0.1); // Scale down slightly
-      final rotation = 0.0; // No rotation
+    // Apply current card's swipe effects
+    if (currentProgress > 0.0) {
+      // Default effects when no custom callback (will be overridden if custom callback is provided)
+      if (widget.customTransformCallback == null) {
+        scale =
+            1.0 - (currentProgress * 0.1); // Scale down slightly while swiping
+      }
+    }
 
-      return CardSwipeTransforms(
-        offsetX: offsetX,
-        offsetY: 0.0,
-        scale: scale,
-        opacity: opacity,
-        rotation: rotation,
-      );
+    // Apply cascade effects from previous card being swiped
+    if (previousProgress > 0.0) {
+      offsetX += -previousProgress * (widget.cardWidth + widget.cardSpacing);
     }
 
     return CardSwipeTransforms(
       offsetX: offsetX,
-      offsetY: 0.0,
-      scale: 1.0,
-      opacity: 1.0,
-      rotation: 0.0,
-    );
-  }
-
-  /// Calculates cascade effects from previous cards being swiped
-  CardSwipeTransforms _calculateCascadeEffects(int index) {
-    if (index <= 0) return CardSwipeTransforms.identity();
-
-    // Check if the previous card exists and hasn't been removed
-    if (_removedItems.value.contains(index - 1)) {
-      return CardSwipeTransforms.identity();
-    }
-
-    final previousCardProgress = _swipeProgress[index - 1]?.value ?? 0.0;
-    if (previousCardProgress <= 0.0) return CardSwipeTransforms.identity();
-
-    // Cascade effect: cards move as previous ones are swiped
-    final cascadeOffset =
-        -previousCardProgress * (widget.cardWidth + widget.cardSpacing);
-
-    // Subtle scale and opacity changes for cascade effect
-
-    return CardSwipeTransforms(
-      offsetX: cascadeOffset,
-      offsetY: 0.0,
-      scale: 1.0,
-      opacity: 1.0,
+      offsetY: offsetY,
+      scale: scale,
+      opacity: opacity,
+      rotation: rotation,
     );
   }
 }
