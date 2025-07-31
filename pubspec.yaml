@@ -1,6 +1,6 @@
 name: card_list_swipe
 description: "A Flutter package that provides a horizontally scrollable stack of dismissible cards with rolling animation effects, perfect for mailbox-style interfaces."
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/ekakshjanweja/card_list_swipe
 
 environment:

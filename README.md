@@ -2,6 +2,12 @@
 
 A Flutter package that provides a horizontally scrollable stack of dismissible cards with rolling animation effects, perfect for mailbox-style interfaces and modern card-based UIs.
 
+## Demo
+
+Watch the package in action:
+
+<iframe width="315" height="560" src="https://www.youtube.com/embed/hksVW1KlzSs" frameborder="0" allowfullscreen></iframe>
+
 ## Features
 
 - **Horizontal Card Stack**: Smoothly scrollable stack of cards with custom spacing
