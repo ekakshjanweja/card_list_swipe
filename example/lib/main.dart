@@ -248,7 +248,7 @@ class CustomCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.25),
       decoration: ShapeDecoration(
-        color: Colors.white60,
+        color: Colors.white,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: Colors.black, width: 1),
