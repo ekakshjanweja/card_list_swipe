@@ -117,40 +117,24 @@ class _CardSwipeStackState extends State<CardSwipeStack> {
     return ValueListenableBuilder<double>(
       valueListenable: _swipeProgress[index]!,
       builder: (context, currentProgress, child) {
-        // Check if we need to listen to previous card for cascade effects
-        if (index > 0) {
-          _swipeProgress[index - 1] ??= ValueNotifier<double>(0.0);
+        _swipeProgress[index - 1] = ValueNotifier<double>(0.0);
 
-          return ValueListenableBuilder<double>(
-            valueListenable: _swipeProgress[index - 1]!,
-            builder: (context, previousProgress, child) {
-              return SwipeCard(
-                index: index,
-                transforms: _calculateCardTransforms(index),
-                customWidget: widget.itemBuilder(context, index),
-                onDismissed: () => _handleCardDismiss(index),
-                onSwipeUpdate: (progress) =>
-                    _handleSwipeUpdate(index, progress),
-                cardWidth: widget.cardWidth,
-                cardSpacing: widget.cardSpacing,
-                animationDuration: widget.cardAnimationDuration,
-                animationCurve: widget.cardAnimationCurve,
-              );
-            },
-          );
-        } else {
-          return SwipeCard(
-            index: index,
-            transforms: _calculateCardTransforms(index),
-            customWidget: widget.itemBuilder(context, index),
-            onDismissed: () => _handleCardDismiss(index),
-            onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
-            cardWidth: widget.cardWidth,
-            cardSpacing: widget.cardSpacing,
-            animationDuration: widget.cardAnimationDuration,
-            animationCurve: widget.cardAnimationCurve,
-          );
-        }
+        return ValueListenableBuilder<double>(
+          valueListenable: _swipeProgress[index - 1]!,
+          builder: (context, previousProgress, child) {
+            return SwipeCard(
+              index: index,
+              transforms: _calculateCardTransforms(index),
+              customWidget: widget.itemBuilder(context, index),
+              onDismissed: () => _handleCardDismiss(index),
+              onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
+              cardWidth: widget.cardWidth,
+              cardSpacing: widget.cardSpacing,
+              animationDuration: widget.cardAnimationDuration,
+              animationCurve: widget.cardAnimationCurve,
+            );
+          },
+        );
       },
     );
   }
