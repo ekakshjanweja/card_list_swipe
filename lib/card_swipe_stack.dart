@@ -117,24 +117,40 @@ class _CardSwipeStackState extends State<CardSwipeStack> {
     return ValueListenableBuilder<double>(
       valueListenable: _swipeProgress[index]!,
       builder: (context, currentProgress, child) {
-        _swipeProgress[index - 1] = ValueNotifier<double>(0.0);
+        // Check if we need to listen to previous card for cascade effects
+        if (index > 0 && !_removedItems.value.contains(index - 1)) {
+          _swipeProgress[index - 1] ??= ValueNotifier<double>(0.0);
 
-        return ValueListenableBuilder<double>(
-          valueListenable: _swipeProgress[index - 1]!,
-          builder: (context, previousProgress, child) {
-            return SwipeCard(
-              index: index,
-              transforms: _calculateCardTransforms(index),
-              customWidget: widget.itemBuilder(context, index),
-              onDismissed: () => _handleCardDismiss(index),
-              onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
-              cardWidth: widget.cardWidth,
-              cardSpacing: widget.cardSpacing,
-              animationDuration: widget.cardAnimationDuration,
-              animationCurve: widget.cardAnimationCurve,
-            );
-          },
-        );
+          return ValueListenableBuilder<double>(
+            valueListenable: _swipeProgress[index - 1]!,
+            builder: (context, previousProgress, child) {
+              return SwipeCard(
+                index: index,
+                transforms: _calculateCardTransforms(index),
+                customWidget: widget.itemBuilder(context, index),
+                onDismissed: () => _handleCardDismiss(index),
+                onSwipeUpdate: (progress) =>
+                    _handleSwipeUpdate(index, progress),
+                cardWidth: widget.cardWidth,
+                cardSpacing: widget.cardSpacing,
+                animationDuration: widget.cardAnimationDuration,
+                animationCurve: widget.cardAnimationCurve,
+              );
+            },
+          );
+        } else {
+          return SwipeCard(
+            index: index,
+            transforms: _calculateCardTransforms(index),
+            customWidget: widget.itemBuilder(context, index),
+            onDismissed: () => _handleCardDismiss(index),
+            onSwipeUpdate: (progress) => _handleSwipeUpdate(index, progress),
+            cardWidth: widget.cardWidth,
+            cardSpacing: widget.cardSpacing,
+            animationDuration: widget.cardAnimationDuration,
+            animationCurve: widget.cardAnimationCurve,
+          );
+        }
       },
     );
   }
@@ -245,6 +261,11 @@ class _CardSwipeStackState extends State<CardSwipeStack> {
   /// Calculates cascade effects from previous cards being swiped
   CardSwipeTransforms _calculateCascadeEffects(int index) {
     if (index <= 0) return CardSwipeTransforms.identity();
+
+    // Check if the previous card exists and hasn't been removed
+    if (_removedItems.value.contains(index - 1)) {
+      return CardSwipeTransforms.identity();
+    }
 
     final previousCardProgress = _swipeProgress[index - 1]?.value ?? 0.0;
     if (previousCardProgress <= 0.0) return CardSwipeTransforms.identity();
